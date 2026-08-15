@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f7f8fa">
+<link rel="manifest" href="manifest.webmanifest">
+<title>İşletme Takip</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f6f8;color:#18202a;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Arial,sans-serif}
+header{padding:18px 16px 10px;background:#fff;position:sticky;top:0;z-index:5;border-bottom:1px solid #e5e7eb}
+h1{font-size:27px;margin:0 0 12px}.tabs{display:flex;gap:8px;overflow:auto}.tabs button{border:0;background:#eef0f4;border-radius:12px;padding:10px 14px;font-weight:600;white-space:nowrap}.tabs button.active{background:#18202a;color:#fff}
+main{padding:14px 14px 95px;max-width:760px;margin:auto}.page{display:none}.page.active{display:block}
+.card{background:#fff;border-radius:18px;padding:16px;margin:10px 0;box-shadow:0 2px 12px #0000000b}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{padding:14px;border-radius:15px;background:#f1f3f6}.metric b{display:block;font-size:20px;margin-top:5px}
+button,.btn{font:inherit}.primary{width:100%;border:0;background:#18202a;color:white;padding:14px;border-radius:14px;font-weight:700}.secondary{border:0;background:#edf0f3;padding:11px 13px;border-radius:12px;font-weight:600}
+input,select,textarea{width:100%;padding:13px;border:1px solid #d9dde3;border-radius:12px;background:#fff;font-size:16px;margin-top:5px}label{display:block;margin:11px 0;font-size:13px;font-weight:650;color:#5b6470}
+.row{display:flex;justify-content:space-between;gap:10px;align-items:center}.small{font-size:12px;color:#707984}.positive{color:#16803c}.negative{color:#c03636}.listitem{padding:13px 0;border-bottom:1px solid #eceef1}.listitem:last-child{border-bottom:0}.danger{color:#c03636;border:0;background:#fff}
+nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #ddd;display:flex;justify-content:space-around;padding:9px env(safe-area-inset-right) calc(9px + env(safe-area-inset-bottom)) env(safe-area-inset-left);z-index:10}
+nav button{border:0;background:transparent;color:#68707a;font-size:11px;font-weight:600}nav button.active{color:#18202a}nav span{display:block;font-size:21px;margin-bottom:2px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:9px 5px;border-bottom:1px solid #eee}
+.empty{text-align:center;color:#7a828d;padding:30px 10px}
+</style>
+</head>
+<body>
+<header>
+<h1>İşletme Takip</h1>
+<div class="tabs">
+<button class="active" onclick="showPage('home',this)">Özet</button>
+<button onclick="showPage('sales',this)">Satış</button>
+<button onclick="showPage('reports',this)">Rapor</button>
+<button onclick="showPage('rates',this)">Kurlar</button>
+<button onclick="showPage('settings',this)">Ayarlar</button>
+</div>
+</header>
+
+<main>
+<section id="home" class="page active">
+<div class="card"><h2>Genel Durum</h2><div class="grid">
+<div class="metric">Toplam satış<b id="allSales">₺0</b></div>
+<div class="metric">Toplam kâr<b id="allProfit">₺0</b></div>
+<div class="metric">Toplam maliyet<b id="allCost">₺0</b></div>
+<div class="metric">Toplam gram<b id="allGram">—</b></div>
+</div></div>
+<div class="card"><h3>Bugün</h3><div class="grid">
+<div class="metric">Tutar<b id="todaySales">₺0</b></div>
+<div class="metric">Adet<b id="todayCount">0</b></div>
+</div></div>
+</section>
+
+<section id="sales" class="page">
+<div class="card"><h2 id="saleTitle">Yeni Satış</h2>
+<label>Tarih<input id="sDate" type="date"></label>
+<label>Kategori<select id="sCat"></select></label>
+<label>Ürün / açıklama<input id="sProduct"></label>
+<label>Satış tutarı (₺)<input id="sAmount" type="number" step="0.01" inputmode="decimal"></label>
+<label>Maliyet (₺)<input id="sCost" type="number" step="0.01" inputmode="decimal"></label>
+<label>Gram (opsiyonel)<input id="sGram" type="number" step="0.01" inputmode="decimal"></label>
+<label>Ödeme<select id="sPay"><option>Nakit</option><option>Kart</option><option>Havale/EFT</option></select></label>
+<label>Not<textarea id="sNote" rows="2"></textarea></label>
+<button class="primary" onclick="saveSale()">KAYDET</button>
+<button class="secondary" id="cancelEdit" style="display:none;margin-top:8px;width:100%" onclick="resetSale()">DÜZENLEMEYİ İPTAL ET</button>
+</div>
+<div class="card"><div class="row"><h2>Geçmiş Satışlar</h2><button class="secondary" onclick="resetSale()">+ Yeni</button></div><div id="saleList"></div></div>
+</section>
+
+<section id="reports" class="page">
+<div class="card"><h2>Raporlar</h2>
+<label>Dönem<select id="period" onchange="renderReports()">
+<option value="day">Günlük</option><option value="week">Haftalık</option><option value="month" selected>Aylık</option><option value="3m">3 Aylık</option><option value="6m">6 Aylık</option><option value="year">Yıllık</option><option value="all">Tüm Zamanlar</option><option value="custom">İki Tarih Arası</option></select></label>
+<div id="customDates" style="display:none"><label>Başlangıç<input id="rStart" type="date" onchange="renderReports()"></label><label>Bitiş<input id="rEnd" type="date" onchange="renderReports()"></label></div>
+<div id="reportBox"></div>
+</div>
+<div class="card"><h3>Satılan Ürün / Kategori</h3><div id="categoryStats"></div></div>
+<div class="card"><h3>Tercih Edilen Aralıklar</h3><div id="rangeStats"></div></div>
+<div class="card"><h3>Geçmişe Göre Karşılaştırma</h3><div id="historyStats"></div></div>
+</section>
+
+<section id="rates" class="page">
+<div class="card"><h2>Günlük Kurlar</h2>
+<label>Tarih<input id="rateDate" type="date"></label>
+<label>Altın / gram (₺)<input id="gold" type="number" step="0.01" inputmode="decimal"></label>
+<label>Gümüş / gram (₺)<input id="silver" type="number" step="0.01" inputmode="decimal"></label>
+<label>Dolar (₺)<input id="usd" type="number" step="0.0001" inputmode="decimal"></label>
+<button class="primary" onclick="saveRate()">KAYDET</button></div>
+<div class="card"><h3>Son Kurlar</h3><div id="rateList"></div></div>
+</section>
+
+<section id="settings" class="page">
+<div class="card"><h2>Kategoriler</h2><div class="row"><input id="newCat" placeholder="Yeni kategori"><button class="secondary" onclick="addCategory()">Ekle</button></div><div id="catList"></div></div>
+<div class="card"><h2>Yedekleme</h2>
+<p class="small">Veriler bu cihazın tarayıcı depolamasında tutulur. Yedek dosyası alarak başka telefona taşıyabilirsin.</p>
+<button class="primary" onclick="backup()">YEDEK AL</button>
+<label class="secondary" style="text-align:center;margin-top:8px">YEDEKTEN GERİ YÜKLE<input type="file" accept=".json,application/json" onchange="restore(event)" style="display:none"></label>
+</div>
+</section>
+</main>
+
+<nav>
+<button class="active" onclick="showPage('home',this)"><span>⌂</span>Özet</button>
+<button onclick="showPage('sales',this)"><span>＋</span>Satış</button>
+<button onclick="showPage('reports',this)"><span>▥</span>Rapor</button>
+<button onclick="showPage('rates',this)"><span>₺</span>Kurlar</button>
+<button onclick="showPage('settings',this)"><span>⚙</span>Ayarlar</button>
+</nav>
+
+<script>
+const KEY='isletme_takip_v3';
+let db=JSON.parse(localStorage.getItem(KEY)||'null')||{
+ sales:[],categories:['Gümüş Satışı','Altın Satışı','Erkek Takı','Kadın Takı','E-ticaret','Diğer Gelir'],rates:[]
+};
+let editId=null;
+const today=()=>new Date().toISOString().slice(0,10);
+const money=n=>(Number(n)||0).toLocaleString('tr-TR',{style:'currency',currency:'TRY'});
+const save=()=>localStorage.setItem(KEY,JSON.stringify(db));
+function showPage(id,btn){
+ document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+ document.getElementById(id).classList.add('active');
+ document.querySelectorAll('.tabs button,nav button').forEach(x=>x.classList.remove('active'));
+ if(btn)btn.classList.add('active');
+ render();
+}
+function fillCats(){sCat.innerHTML=db.categories.map(x=>`<option>${esc(x)}</option>`).join('')}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function resetSale(){
+ editId=null;saleTitle.textContent='Yeni Satış';cancelEdit.style.display='none';
+ sDate.value=today();sProduct.value='';sAmount.value='';sCost.value='';sGram.value='';sNote.value='';
+ fillCats();sCat.value=db.categories[0];sPay.value='Nakit';
+}
+function saveSale(){
+ const amount=Number(sAmount.value)||0;if(amount<=0){alert('Satış tutarını gir.');return}
+ const item={id:editId||crypto.randomUUID(),date:sDate.value||today(),category:sCat.value,product:sProduct.value,amount,cost:Number(sCost.value)||0,gram:sGram.value===''?null:Number(sGram.value),payment:sPay.value,note:sNote.value};
+ const i=db.sales.findIndex(x=>x.id===item.id);if(i>=0)db.sales[i]=item;else db.sales.push(item);save();resetSale();render();
+}
+function editSale(id){const s=db.sales.find(x=>x.id===id);if(!s)return;editId=id;saleTitle.textContent='Satışı Düzenle';cancelEdit.style.display='block';sDate.value=s.date;sCat.value=s.category;sProduct.value=s.product;sAmount.value=s.amount;sCost.value=s.cost;sGram.value=s.gram??'';sPay.value=s.payment;sNote.value=s.note;window.scrollTo({top:0,behavior:'smooth'})}
+function deleteSale(id){if(confirm('Bu kaydı silmek istiyor musun?')){db.sales=db.sales.filter(x=>x.id!==id);save();render()}}
+function renderSales(){
+ saleList.innerHTML=db.sales.length?db.sales.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(s=>`<div class="listitem">
+ <div class="row"><b>${esc(s.product||s.category)}</b><b>${money(s.amount)}</b></div>
+ <div class="small">${esc(s.category)} • ${s.date} • Maliyet ${money(s.cost)} • Kâr ${money(s.amount-s.cost)}${s.gram!=null?' • '+s.gram.toFixed(2)+' g':''}</div>
+ <div style="margin-top:7px"><button class="secondary" onclick="editSale('${s.id}')">Düzenle</button> <button class="secondary" onclick="deleteSale('${s.id}')">Sil</button></div></div>`).join(''):'<div class="empty">Henüz satış kaydı yok.</div>';
+}
+function periodSales(){
+ const p=period.value, now=new Date();let start=new Date(now);
+ if(p==='day')start.setHours(0,0,0,0);
+ else if(p==='week'){start.setDate(now.getDate()-6)}
+ else if(p==='month'){start=new Date(now.getFullYear(),now.getMonth(),1)}
+ else if(p==='3m'){start.setMonth(now.getMonth()-2);start.setDate(1)}
+ else if(p==='6m'){start.setMonth(now.getMonth()-5);start.setDate(1)}
+ else if(p==='year'){start=new Date(now.getFullYear(),0,1)}
+ else if(p==='custom')return db.sales.filter(s=>s.date>=rStart.value&&s.date<=rEnd.value);
+ else return db.sales;
+ const a=start.toISOString().slice(0,10),b=today();return db.sales.filter(s=>s.date>=a&&s.date<=b)
+}
+function renderReports(){
+ customDates.style.display=period.value==='custom'?'block':'none';
+ const a=periodSales(),sum=a.reduce((x,s)=>x+s.amount,0),cost=a.reduce((x,s)=>x+s.cost,0),grams=a.filter(s=>s.gram!=null).reduce((x,s)=>x+s.gram,0);
+ const withGram=a.filter(s=>s.gram!=null),avgG=withGram.length?grams/withGram.length:0,avgT=a.length?sum/a.length:0;
+ reportBox.innerHTML=`<div class="grid"><div class="metric">Adet<b>${a.length}</b></div><div class="metric">Tutar<b>${money(sum)}</b></div><div class="metric">Kâr<b>${money(sum-cost)}</b></div><div class="metric">Ort. tutar<b>${money(avgT)}</b></div><div class="metric">Gramlı satış<b>${withGram.length}</b></div><div class="metric">Ort. gram<b>${withGram.length?avgG.toFixed(2)+' g':'—'}</b></div></div>`;
+ const cats={};a.forEach(s=>cats[s.category]=(cats[s.category]||0)+1);categoryStats.innerHTML=Object.entries(cats).sort((x,y)=>y[1]-x[1]).map(([k,v])=>`<div class="listitem"><div class="row"><b>${esc(k)}</b><span>${v} adet</span></div></div>`).join('')||'<div class="empty">Veri yok.</div>';
+ const ranges=(vals,bins)=>{let r=Array(bins.length).fill(0);vals.forEach(v=>{for(let i=0;i<bins.length;i++)if(v>=bins[i][0]&&(i===bins.length-1||v<bins[i][1])){r[i]++;break}});return r};
+ const tBins=[[0,1000],[1000,2500],[2500,5000],[5000,10000],[10000,25000],[25000,Infinity]];
+ const tr=ranges(a.map(s=>s.amount),tBins);
+ rangeStats.innerHTML='<b>Tutar:</b> '+tr.map((n,i)=>`${tBins[i][0].toLocaleString('tr-TR')}–${isFinite(tBins[i][1])?tBins[i][1].toLocaleString('tr-TR')+' ₺':'+'} ₺: ${n}`).join('<br>')+'<br><br><b>Gram:</b> '+(withGram.length?`${Math.min(...withGram.map(s=>s.gram)).toFixed(2)}–${Math.max(...withGram.map(s=>s.gram)).toFixed(2)} g aralığı analiz edildi.`:'Gram girilen satış yok.');
+ historyStats.innerHTML=compareText(a);
+}
+function compareText(a){
+ if(!a.length)return 'Veri yok.';
+ const base=a.reduce((x,s)=>x+s.amount,0)/a.length;
+ const days=a.map(s=>new Date(s.date).getDay()),day=new Date().getDay();
+ const sameDay=db.sales.filter(s=>new Date(s.date).getDay()===day&&s.date<today());
+ const sd=sameDay.length?sameDay.reduce((x,s)=>x+s.amount,0)/sameDay.length:0;
+ const dayText=sd?`Geçmiş aynı gün ortalaması: <b>${money(sd)}</b> • Bugünkü/Seçili dönem ortalaman: <b>${money(base)}</b> • Fark: <b class="${base>=sd?'positive':'negative'}">${money(base-sd)}</b> (${((base-sd)/sd*100).toFixed(1)}%)`:'Geçmiş aynı haftanın günleri için yeterli veri yok.';
+ return dayText;
+}
+function saveRate(){const r={id:crypto.randomUUID(),date:rateDate.value||today(),gold:Number(gold.value)||0,silver:Number(silver.value)||0,usd:Number(usd.value)||0};const i=db.rates.findIndex(x=>x.date===r.date);if(i>=0)db.rates[i]=r;else db.rates.push(r);save();render()}
+function renderRates(){rateList.innerHTML=db.rates.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(r=>`<div class="listitem">${r.date}<br><span class="small">Altın ${money(r.gold)} • Gümüş ${money(r.silver)} • Dolar ${money(r.usd)}</span></div>`).join('')||'<div class="empty">Kur kaydı yok.</div>'}
+function addCategory(){const n=newCat.value.trim();if(!n)return;if(!db.categories.includes(n))db.categories.push(n);newCat.value='';save();render()}
+function renderCats(){catList.innerHTML=db.categories.map((c,i)=>`<div class="listitem row"><span>${esc(c)}</span>${db.categories.length>1?`<button class="danger" onclick="removeCat(${i})">Sil</button>`:''}</div>`).join('')}
+function removeCat(i){db.categories.splice(i,1);save();render()}
+function backup(){const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='isletme-takip-yedek-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function restore(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const x=JSON.parse(r.result);if(!x.sales||!x.categories)throw 0;db=x;save();render();alert('Yedek geri yüklendi.')}catch{alert('Geçersiz yedek dosyası.')}};r.readAsText(f)}
+function render(){
+ fillCats();renderSales();renderRates();renderCats();
+ const total=db.sales.reduce((x,s)=>x+s.amount,0),cost=db.sales.reduce((x,s)=>x+s.cost,0),grams=db.sales.filter(s=>s.gram!=null).reduce((x,s)=>x+s.gram,0);
+ allSales.textContent=money(total);allCost.textContent=money(cost);allProfit.textContent=money(total-cost);allGram.textContent=grams?grams.toFixed(2)+' g':'—';
+ const td=db.sales.filter(s=>s.date===today());todaySales.textContent=money(td.reduce((x,s)=>x+s.amount,0));todayCount.textContent=td.length;
+ renderReports();
+}
+sDate.value=today();rateDate.value=today();render();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>

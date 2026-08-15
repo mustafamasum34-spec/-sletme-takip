@@ -1,0 +1,9 @@
+{
+  "name":"İşletme Takip",
+  "short_name":"İşletme Takip",
+  "start_url":"./",
+  "display":"standalone",
+  "background_color":"#f5f6f8",
+  "theme_color":"#f7f8fa",
+  "icons":[]
+}

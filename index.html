@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="İşletme Takip">
 <meta name="theme-color" content="#0b1f3a">
 <title>İşletme Takip V8</title>
@@ -38,6 +39,9 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:#0b1f3a;color:#f
 <header><h1>İşletme Takip</h1><div class="sub">V8 • Sadece Gelir Takibi • Maliyet ve Gram</div></header>
 <main>
 <section id="home" class="screen active">
+<div class="card" id="backupBanner" style="display:none;background:#fff4e5;border:1px solid #f3d19e">
+<div class="between"><span id="backupBannerText" style="font-size:13px;font-weight:600;color:#7a4a00"></span><button type="button" id="backupBannerBtn" class="secondary" style="padding:8px 14px;font-size:12px;white-space:nowrap">Yedek Al</button></div>
+</div>
 <div class="card"><div class="between"><h2>Özet</h2><span class="muted" id="periodLabel"></span></div>
 <div class="periods" id="periods">
 <button type="button" data-period="day">Gün</button><button type="button" data-period="week">Hafta</button><button type="button" data-period="month" class="selected">Ay</button><button type="button" data-period="3m">3 Ay</button><button type="button" data-period="6m">6 Ay</button><button type="button" data-period="year">Yıl</button><button type="button" data-period="all">Tümü</button><button type="button" data-period="custom">2 Tarih</button></div>
@@ -84,6 +88,8 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:#0b1f3a;color:#f
       <div class="metric"><small>Yıllık toplam ciro</small><strong id="yearTotal">₺0</strong></div>
     </div>
   </div>
+
+  <div id="monthProgress"></div>
 
   <div class="card">
     <h2>Geçmiş Günlerle Karşılaştır</h2>
@@ -180,7 +186,7 @@ function setType(t){entryType="income";$("entryTitle").textContent=editId?"Kayd�
 function openEntry(id){editId=id||null;if(id){var t=db.transactions.find(function(x){return x.id===id});if(!t)return;entryType=t.type;$("fDate").value=t.date;$("fDesc").value=t.desc||"";$("fAmount").value=t.amount;$("fCost").value=t.cost||"";$("fGram").value=t.gram||"";$("fPayment").value=t.payment||"Nakit";$("fNote").value=t.note||"";$("cancelEdit").hidden=false}else{$("fDate").value=today();$("fDesc").value="";$("fAmount").value="";$("fCost").value="";$("fGram").value="";$("fPayment").value="Nakit";$("fNote").value="";$("cancelEdit").hidden=true;entryType="income"}setType(entryType);if(id)$("fCategory").value=db.transactions.find(function(x){return x.id===id}).category;show("entry")}
 function saveEntry(){var amount=Number($("fAmount").value);if(!amount){alert("Tutar girin.");return}var o={date:$("fDate").value||today(),type:"income",category:$("fCategory").value,desc:$("fDesc").value.trim(),amount:amount,cost:entryType==="income"?Number($("fCost").value||0):0,gram:entryType==="income"?Number($("fGram").value||0):0,payment:$("fPayment").value,note:$("fNote").value.trim()};if(editId){var i=db.transactions.findIndex(function(x){return x.id===editId});db.transactions[i]=Object.assign({},db.transactions[i],o)}else db.transactions.push(Object.assign({id:String(Date.now())+Math.random()},o));save();show("transactions")}
 function deleteTx(id){if(confirm("Bu kayıt silinsin mi?")){db.transactions=db.transactions.filter(function(t){return t.id!==id});save()}}
-function renderHome(){var a=txRange(),m=metric(a),sales=a.filter(function(t){return t.type==="income"}),r=range(),rr=rateFor(iso(r.end)),g=sales.filter(function(t){return Number(t.gram)>0});$("mSales").textContent=money(m.sales);$("mExpense").textContent=money(m.cost+m.expenses);$("mProfit").textContent=money(m.profit);$("mCount").textContent=m.count;$("mGram").textContent=g.length?m.gram.toFixed(2)+" g":"—";$("mAvg").textContent=money(sales.length?m.sales/sales.length:0);$("periodLabel").textContent=r.start.toLocaleDateString("tr-TR")+" – "+r.end.toLocaleDateString("tr-TR");
+function renderHome(){var a=txRange(),m=metric(a),sales=a.filter(function(t){return t.type==="income"}),r=range(),rr=rateFor(iso(r.end)),g=sales.filter(function(t){return Number(t.gram)>0});$("mSales").textContent=money(m.sales);$("mExpense").textContent=money(m.cost+m.expenses);$("mProfit").textContent=money(m.profit);$("mCount").textContent=m.count;$("mGram").textContent=g.length?m.gram.toFixed(2)+" g":"—";$("mAvg").textContent=money(sales.length?m.sales/sales.length:0);$("periodLabel").textContent=r.start.toLocaleDateString("tr-TR")+" – "+r.end.toLocaleDateString("tr-TR");renderBackupBanner();
 $("rGold").textContent=rr?money(rr.gold):"—";$("rUsd").textContent=rr?(Number(rr.usd).toFixed(4)+" ₺"):"—";$("rSilver").textContent=rr?(Number(rr.silver).toFixed(4)+" ₺"):"—";$("convGold").textContent=rr&&rr.gold?((m.profit/rr.gold).toFixed(2)+" gr"):"—";$("convUsd").textContent=rr&&rr.usd?("$ "+(m.profit/rr.usd).toFixed(2)):"—";$("convSilver").textContent=rr&&rr.silver?((m.profit/rr.silver).toFixed(2)+" gr"):"—";$("convDate").textContent=rr?rr.date:"Kayıt yok"}
 function bars(a,field,bins){var max=1;var counts=bins.map(function(b){return a.filter(function(t){return Number(t[field])>0&&Number(t[field])>=b[0]&&Number(t[field])<b[1]}).length});max=Math.max.apply(null,[1].concat(counts));return bins.map(function(b,i){return'<div class="item"><div class="between"><span>'+b[2]+'</span><b>'+counts[i]+'</b></div><div class="bar"><i style="width:'+(counts[i]/max*100)+'%"></i></div></div>'}).join("")}
 function renderStats(){var s=txRange().filter(function(t){return t.type==="income"}),g=s.filter(function(t){return Number(t.gram)>0}),tg=g.reduce(function(x,t){return x+Number(t.gram)},0);$("sGramCount").textContent=g.length;$("sNoGram").textContent=s.length-g.length;$("sAvgGram").textContent=g.length?(tg/g.length).toFixed(2)+" g":"—";$("sAvgAmount").textContent=money(s.length?s.reduce(function(x,t){return x+Number(t.amount)},0)/s.length:0);
@@ -286,6 +292,7 @@ function renderReport(){
   $("weekdayRank").innerHTML=rankHtml(ws);$("monthdayRank").innerHTML=rankHtml(md);
   $("weekdayChart").innerHTML=svgChart(weekdayValues().map(function(x){return{label:x.short,value:x.value,highlight:x.highlight}}),110);
   $("yearRank").innerHTML=svgBars(yearStats());
+  $("monthProgress").innerHTML=renderMonthProgress();
 
   $("repSalesGold").textContent=rr&&rr.gold?(m.sales/rr.gold).toFixed(2)+" gr":"—";
   $("repProfitGold").textContent=rr&&rr.gold?(m.profit/rr.gold).toFixed(2)+" gr":"—";
@@ -307,6 +314,23 @@ function compareBlock(title,current,history){
   return '<div class="card"><h3>'+title+'</h3><div class="muted">'+history.length+' geçmiş kayıtlı günün ortalaması</div>'+
     rows.map(function(r){var p=pct(r[1],r[2]);return '<div class="item"><div class="between"><span>'+r[0]+'</span><b>'+ (r[0]==="Gram"?(r[1]?r[1].toFixed(2)+" g":"—"):r[0]==="Adet"?r[1].toFixed(1):money(r[1]))+' <span class="'+(p>=0?"good":"bad")+'">'+(p>=0?"+":"")+p.toFixed(1)+'%</span></b></div><div class="muted">Geçmiş ort.: '+(r[0]==="Gram"?(r[2]?r[2].toFixed(2)+" g":"—"):r[0]==="Adet"?r[2].toFixed(1):money(r[2]))+'</div></div>';}).join("")+'</div>';
 }
+function unitValues(tl,rate){return{tl:tl,usd:(rate&&rate.usd)?tl/rate.usd:null,gold:(rate&&rate.gold)?tl/rate.gold:null,silver:(rate&&rate.silver)?tl/rate.silver:null}}
+function renderMonthProgress(){
+  var now=new Date();
+  var thisVals=unitValues(monthMetrics(now).sales,rateFor(today()));
+  var lastMonthDate=new Date(now.getFullYear(),now.getMonth()-1,1);
+  var lastMonthEnd=iso(new Date(now.getFullYear(),now.getMonth(),0));
+  var lastVals=unitValues(monthMetrics(lastMonthDate).sales,rateFor(lastMonthEnd));
+  var vals12=monthList(12).map(function(d){var endIso=iso(new Date(d.getFullYear(),d.getMonth()+1,0));return unitValues(monthMetrics(d).sales,rateFor(endIso))});
+  function avgUnit(key){var xs=vals12.map(function(v){return v[key]}).filter(function(x){return x!=null});return xs.length?xs.reduce(function(a,b){return a+b},0)/xs.length:null}
+  var avg12Vals={tl:avgUnit("tl"),usd:avgUnit("usd"),gold:avgUnit("gold"),silver:avgUnit("silver")};
+  var units=[["TL","tl",function(v){return v==null?"—":money(v)}],["USD","usd",function(v){return v==null?"—":"$ "+v.toFixed(2)}],["Altın (gr)","gold",function(v){return v==null?"—":v.toFixed(2)+" g"}],["Gümüş (gr)","silver",function(v){return v==null?"—":v.toFixed(2)+" g"}]];
+  function badge(p){if(p==null)return'<span class="muted">—</span>';return'<span class="'+(p>=0?"good":"bad")+'">'+(p>=0?"+":"")+p.toFixed(1)+"%</span>"}
+  var rows=units.map(function(u){var label=u[0],key=u[1],fmt=u[2],cur=thisVals[key],lastV=lastVals[key],avgV=avg12Vals[key];
+    var pLast=(cur!=null&&lastV)?pct(cur,lastV):null,pAvg=(cur!=null&&avgV)?pct(cur,avgV):null;
+    return'<div class="item"><div class="between"><span>'+label+'</span><b>'+fmt(cur)+'</b></div><div class="between muted" style="font-size:11px"><span>Geçen aya göre: '+badge(pLast)+'</span><span>12 ay ort.\'na göre: '+badge(pAvg)+'</span></div></div>'}).join("");
+  return'<div class="card"><h2>Bu Ayın Durumu</h2><div class="muted">Her birim kendi dönemindeki kur/gramaj ile hesaplanır</div>'+rows+'</div>';
+}
 function renderCompareWeekday(){
   var n=new Date(),cur=metric(db.transactions.filter(function(t){return t.date===today()})),hist=[];
   for(var i=1;i<=24;i++){var d=new Date(n.getFullYear(),n.getMonth(),n.getDate()-i*7);hist.push(metric(db.transactions.filter(function(t){return t.date===iso(d)})));}
@@ -324,11 +348,12 @@ function renderCats(){$("categoryList").innerHTML=db.categories.map(function(c,i
 function saveRate(){var d=$("rateDate").value||today(),g=Number($("goldRate").value),u=Number($("usdRate").value),s=Number($("silverRate").value);if(!g||!u||!s){alert("Altın, dolar ve gümüş değerlerini girin.");return}var i=db.rates.findIndex(function(r){return r.date===d}),o={date:d,gold:g,usd:u,silver:s};if(i>=0)db.rates[i]=o;else db.rates.push(o);save();show("home")}
 function editRate(d){var r=db.rates.find(function(x){return x.date===d});if(!r)return;$("rateDate").value=r.date;$("goldRate").value=r.gold;$("usdRate").value=r.usd;$("silverRate").value=r.silver;show("rates")}
 function render(){renderHome();renderStats();renderTx();renderRates();renderCats();renderReport()}
-function exportData(){var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:"application/json"}));a.download="isletme-takip-v6-yedek.json";a.click()}
+function exportData(){db.lastBackup=today();save();var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:"application/json"}));a.download="isletme-takip-v9-yedek.json";a.click();renderBackupBanner()}
+function renderBackupBanner(){var el=$("backupBanner");if(!db.lastBackup){el.style.display="";$("backupBannerText").textContent="Henüz hiç yedek almadın. Telefon değişiminde veya veri kaybında geri dönüşün olması için şimdi al.";return}var days=Math.floor((new Date(today())-new Date(db.lastBackup))/86400000);if(days>=7){el.style.display="";$("backupBannerText").textContent="Son yedek "+days+" gün önce alındı. Güncel bir yedek almanı öneririz.";}else{el.style.display="none"}}
 document.addEventListener("DOMContentLoaded",function(){
 document.querySelectorAll("[data-screen]").forEach(function(b){b.addEventListener("click",function(){show(b.dataset.screen)})});
 $("homeAdd").addEventListener("click",function(){openEntry()});$("listAdd").addEventListener("click",function(){openEntry()});$("fab").addEventListener("click",function(){openEntry()});$("rateButton").addEventListener("click",function(){$("rateDate").value=today();var r=rateFor(today());if(r){$("goldRate").value=r.gold;$("usdRate").value=r.usd;$("silverRate").value=r.silver}show("rates")});
-$("saveEntry").addEventListener("click",saveEntry);$("cancelEdit").addEventListener("click",function(){show("transactions")});$("saveRate").addEventListener("click",saveRate);
+$("saveEntry").addEventListener("click",saveEntry);$("cancelEdit").addEventListener("click",function(){show("transactions")});$("saveRate").addEventListener("click",saveRate);$("backupBannerBtn").addEventListener("click",exportData);
 $("transactionList").addEventListener("click",function(e){var ed=e.target.closest(".edit"),de=e.target.closest(".del");if(ed)openEntry(ed.dataset.id);if(de)deleteTx(de.dataset.id)});$("rateList").addEventListener("click",function(e){var b=e.target.closest(".rateEdit");if(b)editRate(b.dataset.date)});
 $("addCategory").addEventListener("click",function(){var n=$("newCategory").value.trim();if(!n)return;db.categories.push([n,"income"]);$("newCategory").value="";save()});$("categoryList").addEventListener("click",function(e){var b=e.target.closest(".catdel");if(b&&confirm("Kategori silinsin mi?")){db.categories.splice(Number(b.dataset.index),1);save()}});
 $("exportData").addEventListener("click",exportData);$("importButton").addEventListener("click",function(){$("importFile").click()});$("importFile").addEventListener("change",function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{var x=JSON.parse(rd.result);if(!x.transactions||!x.categories||!x.rates)throw 0;db=x;save();alert("Yedek geri yüklendi.")}catch(z){alert("Geçersiz yedek.")}};rd.readAsText(f)});

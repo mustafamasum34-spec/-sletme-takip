@@ -208,9 +208,9 @@ function sameDate(n,a){var h=[];for(var i=1;i<=12;i++){var d=new Date(n.getFullY
 function dateOnly(s){return new Date(s+"T12:00:00")}
 function monthStart(d){return new Date(d.getFullYear(),d.getMonth(),1)}
 function monthKey(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")}
+function txForMonth(d){var y=d.getFullYear(),m=d.getMonth();return db.transactions.filter(function(t){var x=dateOnly(t.date);return x.getFullYear()===y&&x.getMonth()===m})}
 function monthMetrics(d){
-  var y=d.getFullYear(),m=d.getMonth();
-  return metric(db.transactions.filter(function(t){var x=dateOnly(t.date);return x.getFullYear()===y&&x.getMonth()===m;}));
+  return metric(txForMonth(d));
 }
 function monthList(n){
   var out=[],now=new Date();
@@ -282,13 +282,14 @@ function yearStats(){
   return Object.keys(map).sort(function(a,b){return a-b}).map(function(y){return {label:y,value:map[y],highlight:y===cy}});
 }
 function periodUnitTotals(list){
-  var byMonth={},now=new Date();
-  list.forEach(function(t){var d=dateOnly(t.date),key=d.getFullYear()+"-"+d.getMonth();if(!byMonth[key])byMonth[key]={sales:0,profit:0,y:d.getFullYear(),m:d.getMonth()};byMonth[key].sales+=Number(t.amount||0);byMonth[key].profit+=Number(t.amount||0)-Number(t.cost||0)});
-  var tot={usdSales:0,usdProfit:0,goldSales:0,goldProfit:0,silverSales:0,silverProfit:0,hasUsd:false,hasGold:false,hasSilver:false};
-  Object.keys(byMonth).forEach(function(k){var mo=byMonth[k],isCur=(mo.y===now.getFullYear()&&mo.m===now.getMonth()),refDate=isCur?today():iso(new Date(mo.y,mo.m+1,0)),r=rateFor(refDate);
-    if(r&&r.usd){tot.usdSales+=mo.sales/r.usd;tot.usdProfit+=mo.profit/r.usd;tot.hasUsd=true}
-    if(r&&r.gold){tot.goldSales+=mo.sales/r.gold;tot.goldProfit+=mo.profit/r.gold;tot.hasGold=true}
-    if(r&&r.silver){tot.silverSales+=mo.sales/r.silver;tot.silverProfit+=mo.profit/r.silver;tot.hasSilver=true}
+  var tot={tlSales:0,tlProfit:0,usdSales:0,usdProfit:0,goldSales:0,goldProfit:0,silverSales:0,silverProfit:0,hasUsd:false,hasGold:false,hasSilver:false};
+  list.forEach(function(t){
+    var amount=Number(t.amount||0),profit=amount-Number(t.cost||0);
+    tot.tlSales+=amount;tot.tlProfit+=profit;
+    var r=rateFor(t.date);
+    if(r&&r.usd){tot.usdSales+=amount/r.usd;tot.usdProfit+=profit/r.usd;tot.hasUsd=true}
+    if(r&&r.gold){tot.goldSales+=amount/r.gold;tot.goldProfit+=profit/r.gold;tot.hasGold=true}
+    if(r&&r.silver){tot.silverSales+=amount/r.silver;tot.silverProfit+=profit/r.silver;tot.hasSilver=true}
   });
   return tot;
 }
@@ -349,25 +350,23 @@ function renderCategoryBreakdown(){
       '<div class="between muted" style="font-size:11px"><span>Toplamın %'+pctOfTotal.toFixed(1)+"'i • "+row.count+' satış</span><span>Marj: %'+margin.toFixed(1)+'</span></div></div>';
   }).join("");
 }
-function unitValues(tl,rate){return{tl:tl,usd:(rate&&rate.usd)?tl/rate.usd:null,gold:(rate&&rate.gold)?tl/rate.gold:null,silver:(rate&&rate.silver)?tl/rate.silver:null}}
 function renderMonthProgress(){
   var now=new Date();
-  var thisVals=unitValues(monthMetrics(now).sales,rateFor(today()));
+  var thisVals=periodUnitTotals(txForMonth(now));
   var lastMonthDate=new Date(now.getFullYear(),now.getMonth()-1,1);
-  var lastMonthEnd=iso(new Date(now.getFullYear(),now.getMonth(),0));
-  var lastVals=unitValues(monthMetrics(lastMonthDate).sales,rateFor(lastMonthEnd));
+  var lastVals=periodUnitTotals(txForMonth(lastMonthDate));
   var lastYearDate=new Date(now.getFullYear()-1,now.getMonth(),1);
-  var lastYearEnd=iso(new Date(now.getFullYear()-1,now.getMonth()+1,0));
-  var lastYearVals=unitValues(monthMetrics(lastYearDate).sales,rateFor(lastYearEnd));
-  var vals12=monthList(12).map(function(d){var endIso=iso(new Date(d.getFullYear(),d.getMonth()+1,0));return unitValues(monthMetrics(d).sales,rateFor(endIso))});
-  function avgUnit(key){var xs=vals12.map(function(v){return v[key]}).filter(function(x){return x!=null});return xs.length?xs.reduce(function(a,b){return a+b},0)/xs.length:null}
-  var avg12Vals={tl:avgUnit("tl"),usd:avgUnit("usd"),gold:avgUnit("gold"),silver:avgUnit("silver")};
-  var units=[["TL","tl",function(v){return v==null?"—":money(v)}],["USD","usd",function(v){return v==null?"—":"$ "+v.toFixed(2)}],["Altın (gr)","gold",function(v){return v==null?"—":v.toFixed(2)+" g"}],["Gümüş (gr)","silver",function(v){return v==null?"—":v.toFixed(2)+" g"}]];
+  var lastYearVals=periodUnitTotals(txForMonth(lastYearDate));
+  var months12=monthList(12).map(function(d){return periodUnitTotals(txForMonth(d))});
+  function avgUnit(key){var xs=months12.map(function(v){return v[key]});return xs.length?xs.reduce(function(a,b){return a+b},0)/xs.length:null}
+  var avg12Vals={tl:avgUnit("tlSales"),usd:avgUnit("usdSales"),gold:avgUnit("goldSales"),silver:avgUnit("silverSales")};
+  var units=[["TL","tlSales",function(v){return v==null?"—":money(v)}],["USD","usdSales",function(v){return v==null?"—":"$ "+v.toFixed(2)}],["Altın (gr)","goldSales",function(v){return v==null?"—":v.toFixed(2)+" g"}],["Gümüş (gr)","silverSales",function(v){return v==null?"—":v.toFixed(2)+" g"}]];
+  var avgKeyMap={tlSales:"tl",usdSales:"usd",goldSales:"gold",silverSales:"silver"};
   function badge(p){if(p==null)return'<span class="muted">—</span>';return'<span class="'+(p>=0?"good":"bad")+'">'+(p>=0?"+":"")+p.toFixed(1)+"%</span>"}
-  var rows=units.map(function(u){var label=u[0],key=u[1],fmt=u[2],cur=thisVals[key],lastV=lastVals[key],avgV=avg12Vals[key],lyV=lastYearVals[key];
+  var rows=units.map(function(u){var label=u[0],key=u[1],fmt=u[2],cur=thisVals[key],lastV=lastVals[key],avgV=avg12Vals[avgKeyMap[key]],lyV=lastYearVals[key];
     var pLast=(cur!=null&&lastV)?pct(cur,lastV):null,pAvg=(cur!=null&&avgV)?pct(cur,avgV):null,pLY=(cur!=null&&lyV)?pct(cur,lyV):null;
     return'<div class="item"><div class="between"><span>'+label+'</span><b>'+fmt(cur)+'</b></div><div class="between muted" style="font-size:11px;flex-wrap:wrap;gap:4px 10px"><span>Geçen ay: '+badge(pLast)+'</span><span>12 ay ort.: '+badge(pAvg)+'</span><span>Geçen yıl: '+badge(pLY)+'</span></div></div>'}).join("");
-  return'<div class="card"><h2>Bu Ayın Durumu</h2><div class="muted">Her birim kendi dönemindeki kur/gramaj ile hesaplanır</div>'+rows+'</div>';
+  return'<div class="card"><h2>Bu Ayın Durumu</h2><div class="muted">Her satış kendi gününün kuruyla çevrilir</div>'+rows+'</div>';
 }
 function renderCompareWeekday(){
   var n=new Date(),cur=metric(db.transactions.filter(function(t){return t.date===today()})),hist=[];

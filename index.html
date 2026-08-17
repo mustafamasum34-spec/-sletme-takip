@@ -199,7 +199,7 @@ function bars(a,field,bins){var max=1;var counts=bins.map(function(b){return a.f
 function renderStats(){var s=txRange().filter(function(t){return t.type==="income"}),g=s.filter(function(t){return Number(t.gram)>0}),tg=g.reduce(function(x,t){return x+Number(t.gram)},0);$("sGramCount").textContent=g.length;$("sNoGram").textContent=s.length-g.length;$("sAvgGram").textContent=g.length?(tg/g.length).toFixed(2)+" g":"—";$("sAvgAmount").textContent=money(s.length?s.reduce(function(x,t){return x+Number(t.amount)},0)/s.length:0);
 $("gramStats").innerHTML=bars(g,"gram",[[0,5,"0–5 g"],[5,10,"5–10 g"],[10,20,"10–20 g"],[20,50,"20–50 g"],[50,Infinity,"50 g+"]]);$("amountStats").innerHTML=bars(s,"amount",[[0,1000,"₺0–1.000"],[1000,2500,"₺1.000–2.500"],[2500,5000,"₺2.500–5.000"],[5000,10000,"₺5.000–10.000"],[10000,Infinity,"₺10.000+"]]);
 function list(field,id){var o={};s.forEach(function(t){o[t[field]||"Belirtilmemiş"]=(o[t[field]||"Belirtilmemiş"]||0)+1});var q=Object.entries(o).sort(function(a,b){return b[1]-a[1]}),mx=q[0]?q[0][1]:1;$(id).innerHTML=q.map(function(x){return'<div class="item"><div class="between"><span>'+esc(x[0])+'</span><b>'+x[1]+' satış</b></div><div class="bar"><i style="width:'+(x[1]/mx*100)+'%"></i></div></div>'}).join("")||'<div class="empty">Veri yok.</div>'}list("desc","productStats");list("category","categoryStats")}
-function renderTx(){var a=txRange().slice().sort(function(x,y){return y.date.localeCompare(x.date)});if(filter==="income")a=a.filter(function(t){return t.type==="income"});var r=range();$("txRangeLabel").textContent=r.start.toLocaleDateString("tr-TR")+" – "+r.end.toLocaleDateString("tr-TR");$("transactionList").innerHTML=a.length?a.map(function(t){return'<div class="item"><div class="between"><div><b>'+esc(t.desc||t.category)+'</b><div class="muted">'+t.date+' • '+esc(t.category)+'</div><div class="muted">'+(t.type==="income"?(Number(t.gram)>0?Number(t.gram).toFixed(2)+" g":"Gram girilmedi")+" • Maliyet "+money(t.cost):"Gider")+'</div></div><div style="text-align:right"><b class="'+(t.type==="income"?"green":"red")+'">'+(t.type==="income"?"+":"-")+money(t.amount)+'</b><div style="margin-top:7px"><button type="button" class="secondary edit" data-id="'+esc(t.id)+'">Düzenle</button> <button type="button" class="danger del" data-id="'+esc(t.id)+'">Sil</button></div></div></div></div>'}).join(""):'<div class="empty">Bu tarih aralığında kayıt yok.</div>'}
+function renderTx(){var a=txRange().slice().sort(function(x,y){return y.date.localeCompare(x.date)});if(filter==="income")a=a.filter(function(t){return t.type==="income"});var r=range();$("txRangeLabel").textContent=r.start.toLocaleDateString("tr-TR")+" – "+r.end.toLocaleDateString("tr-TR");$("transactionList").innerHTML=a.length?a.map(function(t){var margin=(t.type==="income"&&t.amount)?((t.amount-t.cost)/t.amount*100):null;return'<div class="item"><div class="between"><div><b>'+esc(t.desc||t.category)+'</b><div class="muted">'+t.date+' • '+esc(t.category)+'</div><div class="muted">'+(t.type==="income"?(Number(t.gram)>0?Number(t.gram).toFixed(2)+" g":"Gram girilmedi")+" • Maliyet "+money(t.cost)+(margin!=null?" • Kâr %"+margin.toFixed(1):""):"Gider")+'</div></div><div style="text-align:right"><b class="'+(t.type==="income"?"green":"red")+'">'+(t.type==="income"?"+":"-")+money(t.amount)+'</b><div style="margin-top:7px"><button type="button" class="secondary edit" data-id="'+esc(t.id)+'">Düzenle</button> <button type="button" class="danger del" data-id="'+esc(t.id)+'">Sil</button></div></div></div></div>'}).join(""):'<div class="empty">Bu tarih aralığında kayıt yok.</div>'}
 function avg(arr){return{sales:arr.reduce(function(a,x){return a+x.sales},0)/(arr.length||1),profit:arr.reduce(function(a,x){return a+x.profit},0)/(arr.length||1),count:arr.reduce(function(a,x){return a+x.count},0)/(arr.length||1),gram:arr.reduce(function(a,x){return a+x.gram},0)/(arr.length||1)}}function pct(a,b){return b?((a-b)/b*100):0}
 function cc(title,a,b,n){return'<div class="card"><h3>'+title+'</h3><div class="muted">'+n+' geçmiş dönem</div><div class="item"><div class="between"><span>Satış</span><b>'+money(a.sales)+' ('+pct(a.sales,b.sales).toFixed(1)+'%)</b></div></div><div class="item"><div class="between"><span>Kâr</span><b>'+money(a.profit)+' ('+pct(a.profit,b.profit).toFixed(1)+'%)</b></div></div><div class="item"><div class="between"><span>Adet</span><b>'+a.count+' ('+pct(a.count,b.count).toFixed(1)+'%)</b></div></div><div class="item"><div class="between"><span>Gram</span><b>'+(a.gram?a.gram.toFixed(2)+" g":"—")+'</b></div></div></div>'}
 function renderCompare(){var n=new Date(),a=metric(db.transactions.filter(function(t){return t.date===today()})),h=[];if(compareMode==="day"){for(var i=1;i<=12;i++){var d=new Date(n.getFullYear(),n.getMonth(),n.getDate()-i*7);h.push(metric(db.transactions.filter(function(t){return t.date===iso(d)})))}$("comparison").innerHTML=cc("Bugün vs geçmiş Cuma/Pazartesi vb. aynı haftanın günü",a,avg(h),h.length)+sameDate(n,a)}else{for(var j=1;j<=12;j++){var d2=new Date(n.getFullYear(),n.getMonth()-j,1),y=d2.getFullYear(),m=d2.getMonth();h.push(metric(db.transactions.filter(function(t){var x=new Date(t.date+"T12:00:00");return x.getFullYear()===y&&x.getMonth()===m})))}$("comparison").innerHTML=cc("Bu ay vs geçmiş ayların ortalaması",metric(db.transactions.filter(function(t){var x=new Date(t.date+"T12:00:00");return x.getFullYear()===n.getFullYear()&&x.getMonth()===n.getMonth()})),avg(h),h.length)}}
@@ -281,8 +281,19 @@ function yearStats(){
   db.transactions.forEach(function(t){var y=dateOnly(t.date).getFullYear();map[y]=(map[y]||0)+Number(t.amount||0)});
   return Object.keys(map).sort(function(a,b){return a-b}).map(function(y){return {label:y,value:map[y],highlight:y===cy}});
 }
+function periodUnitTotals(list){
+  var byMonth={},now=new Date();
+  list.forEach(function(t){var d=dateOnly(t.date),key=d.getFullYear()+"-"+d.getMonth();if(!byMonth[key])byMonth[key]={sales:0,profit:0,y:d.getFullYear(),m:d.getMonth()};byMonth[key].sales+=Number(t.amount||0);byMonth[key].profit+=Number(t.amount||0)-Number(t.cost||0)});
+  var tot={usdSales:0,usdProfit:0,goldSales:0,goldProfit:0,silverSales:0,silverProfit:0,hasUsd:false,hasGold:false,hasSilver:false};
+  Object.keys(byMonth).forEach(function(k){var mo=byMonth[k],isCur=(mo.y===now.getFullYear()&&mo.m===now.getMonth()),refDate=isCur?today():iso(new Date(mo.y,mo.m+1,0)),r=rateFor(refDate);
+    if(r&&r.usd){tot.usdSales+=mo.sales/r.usd;tot.usdProfit+=mo.profit/r.usd;tot.hasUsd=true}
+    if(r&&r.gold){tot.goldSales+=mo.sales/r.gold;tot.goldProfit+=mo.profit/r.gold;tot.hasGold=true}
+    if(r&&r.silver){tot.silverSales+=mo.sales/r.silver;tot.silverProfit+=mo.profit/r.silver;tot.hasSilver=true}
+  });
+  return tot;
+}
 function renderReport(){
-  var a=reportTx(),m=metric(a),r=reportRange(),rr=rateFor(iso(r.end));
+  var a=reportTx(),m=metric(a),r=reportRange();
   $("repSales").textContent=money(m.sales);$("repProfit").textContent=money(m.profit)+(m.sales?" (%"+(m.profit/m.sales*100).toFixed(1)+")":"");renderCategoryBreakdown();
   $("avg12").textContent=money(monthlyAverage(12));$("avg24").textContent=money(monthlyAverage(24));
   $("avgAll").textContent=money(allTimeMonthlyAverage());
@@ -301,12 +312,13 @@ function renderReport(){
   $("yearRank").innerHTML=svgBars(yearStats());
   $("monthProgress").innerHTML=renderMonthProgress();
 
-  $("repSalesGold").textContent=rr&&rr.gold?(m.sales/rr.gold).toFixed(2)+" gr":"—";
-  $("repProfitGold").textContent=rr&&rr.gold?(m.profit/rr.gold).toFixed(2)+" gr":"—";
-  $("repSalesUsd").textContent=rr&&rr.usd?"$ "+(m.sales/rr.usd).toFixed(2):"—";
-  $("repProfitUsd").textContent=rr&&rr.usd?"$ "+(m.profit/rr.usd).toFixed(2):"—";
-  $("repSalesSilver").textContent=rr&&rr.silver?(m.sales/rr.silver).toFixed(2)+" gr":"—";
-  $("repProfitSilver").textContent=rr&&rr.silver?(m.profit/rr.silver).toFixed(2)+" gr":"—";
+  var ut=periodUnitTotals(a);
+  $("repSalesGold").textContent=ut.hasGold?ut.goldSales.toFixed(2)+" gr":"—";
+  $("repProfitGold").textContent=ut.hasGold?ut.goldProfit.toFixed(2)+" gr":"—";
+  $("repSalesUsd").textContent=ut.hasUsd?"$ "+ut.usdSales.toFixed(2):"—";
+  $("repProfitUsd").textContent=ut.hasUsd?"$ "+ut.usdProfit.toFixed(2):"—";
+  $("repSalesSilver").textContent=ut.hasSilver?ut.silverSales.toFixed(2)+" gr":"—";
+  $("repProfitSilver").textContent=ut.hasSilver?ut.silverProfit.toFixed(2)+" gr":"—";
 
   if(compareMode==="day") renderCompareWeekday();
   else renderCompareMonthday();

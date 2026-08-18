@@ -79,7 +79,9 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:#0b1f3a;color:#f
       <button type="button" data-report="6m">6 Ay</button>
       <button type="button" data-report="year">Bu Yıl</button>
       <button type="button" data-report="all">Tüm Zamanlar</button>
+      <button type="button" data-report="custom">Seçili Aralık</button>
     </div>
+    <div class="muted" style="font-size:11px;margin-top:6px">Seçili Aralık: Özet ekranındaki tarih/ay seçimini kullanır</div>
     <div class="grid">
       <div class="metric"><small>Seçili dönem ciro</small><strong id="repSales">₺0</strong></div>
       <div class="metric"><small>Seçili dönem kâr</small><strong id="repProfit">₺0</strong></div>
@@ -94,6 +96,16 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:#0b1f3a;color:#f
     <h2>Kategori Kırılımı</h2>
     <div class="muted" id="catBreakdownLabel" style="font-size:12px"></div>
     <div id="catBreakdown"></div>
+  </div>
+
+  <div class="card">
+    <h2>Hacim Trendi</h2>
+    <div class="muted">Fiyattan bağımsız gerçek büyüme — son 12 ay</div>
+    <div class="metric" style="margin:10px 0"><small>Seçili dönem gram başına kâr</small><strong id="profitPerGram">—</strong></div>
+    <h3>Aylık Gram</h3>
+    <div id="volumeGramChart" class="chart"></div>
+    <h3 style="margin-top:14px">Aylık Satış Adedi</h3>
+    <div id="volumeCountChart" class="chart"></div>
   </div>
 
   <div id="monthProgress"></div>
@@ -146,7 +158,7 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:#0b1f3a;color:#f
   </div>
 </section>
 
-<section id="transactions" class="screen"><div class="card"><div class="between"><h2>Geçmiş İşlemler</h2><button type="button" id="listAdd" class="primary">＋ Kayıt</button></div><div class="between"><span class="muted" id="txRangeLabel" style="font-size:12px"></span></div><div class="toggle"><button type="button" id="filterAll" class="selected">Tümü</button><button type="button" id="filterSales">Satış</button></div><div id="transactionList"></div></div></section>
+<section id="transactions" class="screen"><div class="card"><div class="between"><h2>Geçmiş İşlemler</h2><button type="button" id="listAdd" class="primary">＋ Kayıt</button></div><div class="between"><span class="muted" id="txRangeLabel" style="font-size:12px"></span></div><div id="transactionList"></div></div></section>
 
 <section id="entry" class="screen"><div class="card"><div class="between"><h2 id="entryTitle">Yeni Satış</h2><button type="button" id="cancelEdit" class="secondary" hidden>İptal</button></div>
 <label>Tarih</label><input id="fDate" type="date"><label>Kategori</label><select id="fCategory"></select><label>Ürün / Açıklama</label><input id="fDesc" placeholder="Örn. Erkek gümüş bileklik">
@@ -168,7 +180,7 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:#0b1f3a;color:#f
 (function(){
 "use strict";
 var KEY="isletme_takip_v9",defaults=[["Gümüş Satışı","income"],["Altın Satışı","income"],["Erkek Takı","income"],["Kadın Takı","income"],["E-ticaret","income"],["Diğer Gelir","income"]];
-var db=load(),period="month",filter="all",entryType="income",editId=null,compareMode="day",reportPeriod="month";
+var db=load(),period="month",entryType="income",editId=null,compareMode="day",reportPeriod="month";
 function $(id){return document.getElementById(id)} function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]})}
 function load(){try{var x=JSON.parse(localStorage.getItem(KEY));if(x&&x.transactions&&x.categories&&x.rates){x.transactions=x.transactions.filter(function(t){return t.type==="income"});x.categories=x.categories.filter(function(c){return c[1]==="income"});if(!x.categories.length)x.categories=defaults.slice();return x}var old=JSON.parse(localStorage.getItem("isletme_takip_v8"))||JSON.parse(localStorage.getItem("isletme_takip_v6"));if(old&&old.transactions){old.transactions=old.transactions.filter(function(t){return t.type==="income"});old.categories=(old.categories||[]).filter(function(c){return c[1]==="income"});if(!old.categories.length)old.categories=defaults.slice();return old}}catch(e){}return{categories:defaults.slice(),transactions:[],rates:[]}}
 function save(){localStorage.setItem(KEY,JSON.stringify(db));render()}
@@ -186,7 +198,7 @@ if(period==="all")start=new Date(2000,0,1);
 if(period==="custom"){if($("startDate").value)start=new Date($("startDate").value+"T00:00:00");if($("endDate").value)end=new Date($("endDate").value+"T23:59:59")}
 return{start:start,end:end}}
 function txRange(){var r=range();return db.transactions.filter(function(t){var x=new Date(t.date+"T12:00:00");return x>=r.start&&x<=r.end})}
-function metric(a){var s=a.filter(function(t){return t.type==="income"}),sales=s.reduce(function(x,t){return x+Number(t.amount||0)},0),cost=s.reduce(function(x,t){return x+Number(t.cost||0)},0),exp=a.filter(function(t){return t.type==="expense"}).reduce(function(x,t){return x+Number(t.amount||0)},0),g=s.filter(function(t){return Number(t.gram)>0}).reduce(function(x,t){return x+Number(t.gram)},0);return{sales:sales,cost:cost,expenses:0,profit:sales-cost,count:s.length,gram:g}}
+function metric(a){var s=a.filter(function(t){return t.type==="income"}),sales=s.reduce(function(x,t){return x+Number(t.amount||0)},0),cost=s.reduce(function(x,t){return x+Number(t.cost||0)},0),g=s.filter(function(t){return Number(t.gram)>0}).reduce(function(x,t){return x+Number(t.gram)},0);return{sales:sales,cost:cost,expenses:0,profit:sales-cost,count:s.length,gram:g}}
 function rateFor(date){var a=db.rates.filter(function(r){return r.date<=date}).sort(function(a,b){return b.date.localeCompare(a.date)});return a[0]||null}
 function fillCats(){var a=db.categories.filter(function(c){return c[1]===entryType});$("fCategory").innerHTML=a.map(function(c){return"<option>"+esc(c[0])+"</option>"}).join("")}
 function setType(t){entryType="income";$("entryTitle").textContent=editId?"Kaydı Düzenle":"Yeni Satış";$("costWrap").hidden=false;$("saleExtra").hidden=false;fillCats()}
@@ -199,15 +211,9 @@ function bars(a,field,bins){var max=1;var counts=bins.map(function(b){return a.f
 function renderStats(){var s=txRange().filter(function(t){return t.type==="income"}),g=s.filter(function(t){return Number(t.gram)>0}),tg=g.reduce(function(x,t){return x+Number(t.gram)},0);$("sGramCount").textContent=g.length;$("sNoGram").textContent=s.length-g.length;$("sAvgGram").textContent=g.length?(tg/g.length).toFixed(2)+" g":"—";$("sAvgAmount").textContent=money(s.length?s.reduce(function(x,t){return x+Number(t.amount)},0)/s.length:0);
 $("gramStats").innerHTML=bars(g,"gram",[[0,5,"0–5 g"],[5,10,"5–10 g"],[10,20,"10–20 g"],[20,50,"20–50 g"],[50,Infinity,"50 g+"]]);$("amountStats").innerHTML=bars(s,"amount",[[0,1000,"₺0–1.000"],[1000,2500,"₺1.000–2.500"],[2500,5000,"₺2.500–5.000"],[5000,10000,"₺5.000–10.000"],[10000,Infinity,"₺10.000+"]]);
 function list(field,id){var o={};s.forEach(function(t){o[t[field]||"Belirtilmemiş"]=(o[t[field]||"Belirtilmemiş"]||0)+1});var q=Object.entries(o).sort(function(a,b){return b[1]-a[1]}),mx=q[0]?q[0][1]:1;$(id).innerHTML=q.map(function(x){return'<div class="item"><div class="between"><span>'+esc(x[0])+'</span><b>'+x[1]+' satış</b></div><div class="bar"><i style="width:'+(x[1]/mx*100)+'%"></i></div></div>'}).join("")||'<div class="empty">Veri yok.</div>'}list("desc","productStats");list("category","categoryStats")}
-function renderTx(){var a=txRange().slice().sort(function(x,y){return y.date.localeCompare(x.date)});if(filter==="income")a=a.filter(function(t){return t.type==="income"});var r=range();$("txRangeLabel").textContent=r.start.toLocaleDateString("tr-TR")+" – "+r.end.toLocaleDateString("tr-TR");$("transactionList").innerHTML=a.length?a.map(function(t){var margin=(t.type==="income"&&t.amount)?((t.amount-t.cost)/t.amount*100):null;return'<div class="item"><div class="between"><div><b>'+esc(t.desc||t.category)+'</b><div class="muted">'+t.date+' • '+esc(t.category)+'</div><div class="muted">'+(t.type==="income"?(Number(t.gram)>0?Number(t.gram).toFixed(2)+" g":"Gram girilmedi")+" • Maliyet "+money(t.cost)+(margin!=null?" • Kâr %"+margin.toFixed(1):""):"Gider")+'</div></div><div style="text-align:right"><b class="'+(t.type==="income"?"green":"red")+'">'+(t.type==="income"?"+":"-")+money(t.amount)+'</b><div style="margin-top:7px"><button type="button" class="secondary edit" data-id="'+esc(t.id)+'">Düzenle</button> <button type="button" class="danger del" data-id="'+esc(t.id)+'">Sil</button></div></div></div></div>'}).join(""):'<div class="empty">Bu tarih aralığında kayıt yok.</div>'}
+function renderTx(){var a=txRange().slice().sort(function(x,y){return y.date.localeCompare(x.date)});var r=range();$("txRangeLabel").textContent=r.start.toLocaleDateString("tr-TR")+" – "+r.end.toLocaleDateString("tr-TR");$("transactionList").innerHTML=a.length?a.map(function(t){var margin=(t.type==="income"&&t.amount)?((t.amount-t.cost)/t.amount*100):null;return'<div class="item"><div class="between"><div><b>'+esc(t.desc||t.category)+'</b><div class="muted">'+t.date+' • '+esc(t.category)+'</div><div class="muted">'+(t.type==="income"?(Number(t.gram)>0?Number(t.gram).toFixed(2)+" g":"Gram girilmedi")+" • Maliyet "+money(t.cost)+(margin!=null?" • Kâr %"+margin.toFixed(1):""):"Gider")+'</div></div><div style="text-align:right"><b class="'+(t.type==="income"?"green":"red")+'">'+(t.type==="income"?"+":"-")+money(t.amount)+'</b><div style="margin-top:7px"><button type="button" class="secondary edit" data-id="'+esc(t.id)+'">Düzenle</button> <button type="button" class="danger del" data-id="'+esc(t.id)+'">Sil</button></div></div></div></div>'}).join(""):'<div class="empty">Bu tarih aralığında kayıt yok.</div>'}
 function avg(arr){return{sales:arr.reduce(function(a,x){return a+x.sales},0)/(arr.length||1),profit:arr.reduce(function(a,x){return a+x.profit},0)/(arr.length||1),count:arr.reduce(function(a,x){return a+x.count},0)/(arr.length||1),gram:arr.reduce(function(a,x){return a+x.gram},0)/(arr.length||1)}}function pct(a,b){return b?((a-b)/b*100):0}
-function cc(title,a,b,n){return'<div class="card"><h3>'+title+'</h3><div class="muted">'+n+' geçmiş dönem</div><div class="item"><div class="between"><span>Satış</span><b>'+money(a.sales)+' ('+pct(a.sales,b.sales).toFixed(1)+'%)</b></div></div><div class="item"><div class="between"><span>Kâr</span><b>'+money(a.profit)+' ('+pct(a.profit,b.profit).toFixed(1)+'%)</b></div></div><div class="item"><div class="between"><span>Adet</span><b>'+a.count+' ('+pct(a.count,b.count).toFixed(1)+'%)</b></div></div><div class="item"><div class="between"><span>Gram</span><b>'+(a.gram?a.gram.toFixed(2)+" g":"—")+'</b></div></div></div>'}
-function renderCompare(){var n=new Date(),a=metric(db.transactions.filter(function(t){return t.date===today()})),h=[];if(compareMode==="day"){for(var i=1;i<=12;i++){var d=new Date(n.getFullYear(),n.getMonth(),n.getDate()-i*7);h.push(metric(db.transactions.filter(function(t){return t.date===iso(d)})))}$("comparison").innerHTML=cc("Bugün vs geçmiş Cuma/Pazartesi vb. aynı haftanın günü",a,avg(h),h.length)+sameDate(n,a)}else{for(var j=1;j<=12;j++){var d2=new Date(n.getFullYear(),n.getMonth()-j,1),y=d2.getFullYear(),m=d2.getMonth();h.push(metric(db.transactions.filter(function(t){var x=new Date(t.date+"T12:00:00");return x.getFullYear()===y&&x.getMonth()===m})))}$("comparison").innerHTML=cc("Bu ay vs geçmiş ayların ortalaması",metric(db.transactions.filter(function(t){var x=new Date(t.date+"T12:00:00");return x.getFullYear()===n.getFullYear()&&x.getMonth()===n.getMonth()})),avg(h),h.length)}}
-function sameDate(n,a){var h=[];for(var i=1;i<=12;i++){var d=new Date(n.getFullYear(),n.getMonth()-i,n.getDate());h.push(metric(db.transactions.filter(function(t){return t.date===iso(d)})))}return cc("Aynı ay tarihleri ("+n.getDate()+". gün) karşılaştırması",a,avg(h),h.length)}
-
 function dateOnly(s){return new Date(s+"T12:00:00")}
-function monthStart(d){return new Date(d.getFullYear(),d.getMonth(),1)}
-function monthKey(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")}
 function txForMonth(d){var y=d.getFullYear(),m=d.getMonth();return db.transactions.filter(function(t){var x=dateOnly(t.date);return x.getFullYear()===y&&x.getMonth()===m})}
 function monthMetrics(d){
   return metric(txForMonth(d));
@@ -217,8 +223,15 @@ function monthList(n){
   for(var i=n-1;i>=0;i--){out.push(new Date(now.getFullYear(),now.getMonth()-i,1));}
   return out;
 }
+function monthsTracked(){
+  var dates=db.transactions.map(function(t){return dateOnly(t.date)}).filter(function(d){return !isNaN(d)});
+  if(!dates.length)return 0;
+  var min=new Date(Math.min.apply(null,dates)),now=new Date();
+  return(now.getFullYear()-min.getFullYear())*12+(now.getMonth()-min.getMonth())+1;
+}
 function monthlyAverage(n){
-  var a=monthList(n).map(monthMetrics);
+  var a=monthList(n).map(monthMetrics),mt=monthsTracked();
+  if(mt&&mt<n)a=a.slice(-mt);
   return a.reduce(function(s,x){return s+x.sales},0)/(a.length||1);
 }
 function allTimeMonthlyAverage(){
@@ -234,6 +247,7 @@ function reportRange(){
   else if(reportPeriod==="3m")s=new Date(n.getFullYear(),n.getMonth()-2,1);
   else if(reportPeriod==="6m")s=new Date(n.getFullYear(),n.getMonth()-5,1);
   else if(reportPeriod==="year")s=new Date(n.getFullYear(),0,1);
+  else if(reportPeriod==="custom"){s=dateOnly($("startDate").value||today());var ce=dateOnly($("endDate").value||today());e=new Date(ce.getFullYear(),ce.getMonth(),ce.getDate(),23,59,59)}
   else s=new Date(2000,0,1);
   return {start:s,end:e};
 }
@@ -296,6 +310,8 @@ function periodUnitTotals(list){
 function renderReport(){
   var a=reportTx(),m=metric(a),r=reportRange();
   $("repSales").textContent=money(m.sales);$("repProfit").textContent=money(m.profit)+(m.sales?" (%"+(m.profit/m.sales*100).toFixed(1)+")":"");renderCategoryBreakdown();
+  $("profitPerGram").textContent=m.gram?money(m.profit/m.gram)+" / g":"—";
+  renderVolumeTrend();
   $("avg12").textContent=money(monthlyAverage(12));$("avg24").textContent=money(monthlyAverage(24));
   $("avgAll").textContent=money(allTimeMonthlyAverage());
   $("yearTotal").textContent=money(monthMetrics(new Date()).sales);
@@ -349,6 +365,11 @@ function renderCategoryBreakdown(){
       '<div style="height:8px;background:#edf0f4;border-radius:5px;overflow:hidden;margin:6px 0 4px"><div style="height:100%;width:'+pctOfTotal.toFixed(1)+'%;background:#0b1f3a;border-radius:5px"></div></div>'+
       '<div class="between muted" style="font-size:11px"><span>Toplamın %'+pctOfTotal.toFixed(1)+"'i • "+row.count+' satış</span><span>Marj: %'+margin.toFixed(1)+'</span></div></div>';
   }).join("");
+}
+function renderVolumeTrend(){
+  var monthsData=monthList(12).map(function(d,i,arr){var m=monthMetrics(d);return{label:String(d.getMonth()+1)+"/"+String(d.getFullYear()).slice(-2),gram:m.gram,count:m.count,highlight:i===arr.length-1}});
+  $("volumeGramChart").innerHTML=svgChart(monthsData.map(function(x){return{label:x.label,value:x.gram,highlight:x.highlight}}),120);
+  $("volumeCountChart").innerHTML=svgChart(monthsData.map(function(x){return{label:x.label,value:x.count,highlight:x.highlight}}),120);
 }
 function renderMonthProgress(){
   var now=new Date();
@@ -405,7 +426,7 @@ document.querySelectorAll("[data-period]").forEach(function(b){b.addEventListene
 function applyMonthYear(){var mv=$("monthPickerM").value,yv=$("monthPickerY").value;if(mv===""||yv==="")return;var y=Number(yv),m=Number(mv),start=new Date(y,m,1),end=new Date(y,m+1,0);$("startDate").value=iso(start);$("endDate").value=iso(end);period="custom";document.querySelectorAll("[data-period]").forEach(function(x){x.classList.toggle("selected",x.dataset.period==="custom")});$("customDates").hidden=false;render()}
 $("monthPickerM").addEventListener("change",applyMonthYear);$("monthPickerY").addEventListener("change",applyMonthYear);
 })();
-$("filterAll").addEventListener("click",function(){filter="all";setFilter()});$("filterSales").addEventListener("click",function(){filter="income";setFilter()});$("compareDay").addEventListener("click",function(){compareMode="day";$("compareDay").classList.add("selected");$("compareMonth").classList.remove("selected");renderReport()});$("compareMonth").addEventListener("click",function(){compareMode="month";$("compareMonth").classList.add("selected");$("compareDay").classList.remove("selected");renderReport()});
+$("compareDay").addEventListener("click",function(){compareMode="day";$("compareDay").classList.add("selected");$("compareMonth").classList.remove("selected");renderReport()});$("compareMonth").addEventListener("click",function(){compareMode="month";$("compareMonth").classList.add("selected");$("compareDay").classList.remove("selected");renderReport()});
 $("rateDate").value=today();setType("income");render()
 });
 function setFilter(){["filterAll","filterSales"].forEach(function(x){$(x).classList.remove("selected")});$("filter"+(filter==="all"?"All":filter==="income"?"Sales":"Sales")).classList.add("selected");renderTx()}

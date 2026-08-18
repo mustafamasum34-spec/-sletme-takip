@@ -258,19 +258,21 @@ function reportTx(){
   var r=reportRange();
   return db.transactions.filter(function(t){var d=dateOnly(t.date);return d>=r.start&&d<=r.end});
 }
+function compactNum(n){return new Intl.NumberFormat("tr-TR",{maximumFractionDigits:0}).format(Math.round(n||0))}
 function svgChart(items,height){
-  height=height||140;var w=320,padT=8,padB=20,innerH=height-padT-padB;
+  height=height||150;var w=320,padT=20,padB=20,innerH=height-padT-padB;
   var n=items.length||1,gap=4,barW=Math.max(3,(w-gap*(n-1))/n);
   var max=Math.max.apply(null,[1].concat(items.map(function(x){return x.value})));
   var step=n>12?Math.ceil(n/12):1;
   var grid=[0.25,0.5,0.75].map(function(f){var y=padT+innerH*(1-f);return '<line x1="0" y1="'+y+'" x2="'+w+'" y2="'+y+'" stroke="#e9edf2" stroke-width="1"/>'}).join("");
   var bars=items.map(function(x,i){var bh=x.value>0?Math.max(2,x.value/max*innerH):0,bx=i*(barW+gap),by=padT+innerH-bh,fill=x.highlight?"#087443":"#0b1f3a";return '<rect x="'+bx+'" y="'+by+'" width="'+barW+'" height="'+bh+'" rx="2.5" fill="'+fill+'"/>'}).join("");
   var labels=items.map(function(x,i){if(i%step!==0)return"";var bx=i*(barW+gap)+barW/2;return '<text x="'+bx+'" y="'+(height-5)+'" font-size="8" fill="#70798a" text-anchor="middle">'+esc(x.label)+'</text>'}).join("");
+  var values=items.map(function(x,i){if(i%step!==0)return"";var bh=x.value>0?Math.max(2,x.value/max*innerH):0,bx=i*(barW+gap)+barW/2,by=Math.max(11,padT+innerH-bh-4),vLabel=x.valueLabel!=null?x.valueLabel:compactNum(x.value);return '<text x="'+bx+'" y="'+by+'" font-size="7.5" font-weight="700" fill="#0b1f3a" text-anchor="middle">'+esc(String(vLabel))+'</text>'}).join("");
   return '<svg viewBox="0 0 '+w+' '+height+'" preserveAspectRatio="none" style="width:100%;height:'+height+'px;display:block">'+grid+bars+
-    '<line x1="0" y1="'+(padT+innerH)+'" x2="'+w+'" y2="'+(padT+innerH)+'" stroke="#dde2e9" stroke-width="1.5"/>'+labels+'</svg>';
+    '<line x1="0" y1="'+(padT+innerH)+'" x2="'+w+'" y2="'+(padT+innerH)+'" stroke="#dde2e9" stroke-width="1.5"/>'+labels+values+'</svg>';
 }
-function svgBars(items){return svgChart(items,items.length>6?150:120)}
-function sparkBars(items){return svgChart(items,150)}
+function svgBars(items){return svgChart(items,items.length>6?160:130)}
+function sparkBars(items){return svgChart(items,160)}
 function weekdayValues(){
   var names=["Pazar","Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi"],short=["Paz","Pzt","Sal","Çar","Per","Cum","Cmt"],o=[],td=new Date().getDay();
   for(var i=0;i<7;i++){var a=db.transactions.filter(function(t){return dateOnly(t.date).getDay()===i}),m=metric(a);o.push({label:names[i],short:short[i],value:m.sales,count:m.count,highlight:i===td});}
@@ -331,7 +333,7 @@ function renderReport(){
 
   var ws=weekdayStats(),md=monthdayStats();
   $("weekdayRank").innerHTML=rankHtml(ws);$("monthdayRank").innerHTML=rankHtml(md);
-  $("weekdayChart").innerHTML=svgChart(weekdayValues().map(function(x){return{label:x.short,value:x.value,highlight:x.highlight}}),110);
+  $("weekdayChart").innerHTML=svgChart(weekdayValues().map(function(x){return{label:x.short,value:x.value,highlight:x.highlight}}),130);
   $("yearRank").innerHTML=svgBars(yearStats());
   $("monthProgress").innerHTML=renderMonthProgress();
 
@@ -374,8 +376,8 @@ function renderCategoryBreakdown(){
 }
 function renderVolumeTrend(){
   var monthsData=monthList(12).map(function(d,i,arr){var m=monthMetrics(d);return{label:String(d.getMonth()+1)+"/"+String(d.getFullYear()).slice(-2),gram:m.gram,count:m.count,highlight:i===arr.length-1}});
-  $("volumeGramChart").innerHTML=svgChart(monthsData.map(function(x){return{label:x.label,value:x.gram,highlight:x.highlight}}),120);
-  $("volumeCountChart").innerHTML=svgChart(monthsData.map(function(x){return{label:x.label,value:x.count,highlight:x.highlight}}),120);
+  $("volumeGramChart").innerHTML=svgChart(monthsData.map(function(x){return{label:x.label,value:x.gram,valueLabel:x.gram?x.gram.toFixed(1):"0",highlight:x.highlight}}),140);
+  $("volumeCountChart").innerHTML=svgChart(monthsData.map(function(x){return{label:x.label,value:x.count,valueLabel:x.count,highlight:x.highlight}}),140);
 }
 function renderMonthProgress(){
   var now=new Date();

@@ -51,6 +51,7 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:#0b1f3a;color:#f
 <div class="metric"><small>Satış</small><strong class="green" id="mSales">₺0</strong></div><div class="metric"><small>Ürün Maliyeti</small><strong class="red" id="mExpense">₺0</strong></div>
 <div class="metric"><small>Brüt Kâr</small><strong id="mProfit">₺0</strong></div><div class="metric"><small>Satış Adedi</small><strong id="mCount">0</strong></div>
 <div class="metric"><small>Toplam Gram</small><strong id="mGram">—</strong></div><div class="metric"><small>Ortalama Satış</small><strong id="mAvg">₺0</strong></div>
+<div class="metric"><small>Ortalama Gram</small><strong id="mAvgGram">—</strong></div>
 </div>
 <div class="card"><h2>Günlük Piyasa Değerleri</h2><div class="rateGrid">
 <div class="rateBox"><small>Altın / gr (₺)</small><b id="rGold">—</b></div><div class="rateBox"><small>Dolar (₺)</small><b id="rUsd">—</b></div><div class="rateBox"><small>Gümüş / gr (₺)</small><b id="rSilver">—</b></div>
@@ -85,6 +86,8 @@ button{font:inherit;cursor:pointer}.primary{border:0;background:#0b1f3a;color:#f
     <div class="grid">
       <div class="metric"><small>Seçili dönem ciro</small><strong id="repSales">₺0</strong></div>
       <div class="metric"><small>Seçili dönem kâr</small><strong id="repProfit">₺0</strong></div>
+      <div class="metric"><small>Seçili dönem toplam gram</small><strong id="repGram">—</strong></div>
+      <div class="metric"><small>Seçili dönem ort. gram</small><strong id="repAvgGram">—</strong></div>
       <div class="metric"><small>12 aylık ort. ciro</small><strong id="avg12">₺0</strong></div>
       <div class="metric"><small>24 aylık ort. ciro</small><strong id="avg24">₺0</strong></div>
       <div class="metric"><small>Tüm zaman aylık ort.</small><strong id="avgAll">₺0</strong></div>
@@ -205,7 +208,7 @@ function setType(t){entryType="income";$("entryTitle").textContent=editId?"Kayd�
 function openEntry(id){editId=id||null;if(id){var t=db.transactions.find(function(x){return x.id===id});if(!t)return;entryType=t.type;$("fDate").value=t.date;$("fDesc").value=t.desc||"";$("fAmount").value=t.amount;$("fCost").value=t.cost||"";$("fGram").value=t.gram||"";$("fPayment").value=t.payment||"Nakit";$("fNote").value=t.note||"";$("cancelEdit").hidden=false}else{$("fDate").value=today();$("fDesc").value="";$("fAmount").value="";$("fCost").value="";$("fGram").value="";$("fPayment").value="Nakit";$("fNote").value="";$("cancelEdit").hidden=true;entryType="income"}setType(entryType);if(id)$("fCategory").value=db.transactions.find(function(x){return x.id===id}).category;show("entry")}
 function saveEntry(){var amount=Number($("fAmount").value);if(!amount){alert("Tutar girin.");return}var o={date:$("fDate").value||today(),type:"income",category:$("fCategory").value,desc:$("fDesc").value.trim(),amount:amount,cost:entryType==="income"?Number($("fCost").value||0):0,gram:entryType==="income"?Number($("fGram").value||0):0,payment:$("fPayment").value,note:$("fNote").value.trim()};if(editId){var i=db.transactions.findIndex(function(x){return x.id===editId});db.transactions[i]=Object.assign({},db.transactions[i],o)}else db.transactions.push(Object.assign({id:String(Date.now())+Math.random()},o));save();show("transactions")}
 function deleteTx(id){if(confirm("Bu kayıt silinsin mi?")){db.transactions=db.transactions.filter(function(t){return t.id!==id});save()}}
-function renderHome(){var a=txRange(),m=metric(a),sales=a.filter(function(t){return t.type==="income"}),r=range(),rr=rateFor(iso(r.end)),g=sales.filter(function(t){return Number(t.gram)>0});$("mSales").textContent=money(m.sales);$("mExpense").textContent=money(m.cost+m.expenses);$("mProfit").textContent=money(m.profit)+(m.sales?" (%"+(m.profit/m.sales*100).toFixed(1)+")":"");$("mCount").textContent=m.count;$("mGram").textContent=g.length?m.gram.toFixed(2)+" g":"—";$("mAvg").textContent=money(sales.length?m.sales/sales.length:0);$("periodLabel").textContent=r.start.toLocaleDateString("tr-TR")+" – "+r.end.toLocaleDateString("tr-TR");renderBackupBanner();
+function renderHome(){var a=txRange(),m=metric(a),sales=a.filter(function(t){return t.type==="income"}),r=range(),rr=rateFor(iso(r.end)),g=sales.filter(function(t){return Number(t.gram)>0});$("mSales").textContent=money(m.sales);$("mExpense").textContent=money(m.cost+m.expenses);$("mProfit").textContent=money(m.profit)+(m.sales?" (%"+(m.profit/m.sales*100).toFixed(1)+")":"");$("mCount").textContent=m.count;$("mGram").textContent=g.length?m.gram.toFixed(2)+" g":"—";$("mAvg").textContent=money(sales.length?m.sales/sales.length:0);$("mAvgGram").textContent=g.length?(m.gram/g.length).toFixed(2)+" g":"—";$("periodLabel").textContent=r.start.toLocaleDateString("tr-TR")+" – "+r.end.toLocaleDateString("tr-TR");renderBackupBanner();
 $("rGold").textContent=rr?money(rr.gold):"—";$("rUsd").textContent=rr?(Number(rr.usd).toFixed(4)+" ₺"):"—";$("rSilver").textContent=rr?(Number(rr.silver).toFixed(4)+" ₺"):"—";$("convGold").textContent=rr&&rr.gold?((m.profit/rr.gold).toFixed(2)+" gr"):"—";$("convUsd").textContent=rr&&rr.usd?("$ "+(m.profit/rr.usd).toFixed(2)):"—";$("convSilver").textContent=rr&&rr.silver?((m.profit/rr.silver).toFixed(2)+" gr"):"—";$("convDate").textContent=rr?rr.date:"Kayıt yok"}
 function bars(a,field,bins){var max=1;var counts=bins.map(function(b){return a.filter(function(t){return Number(t[field])>0&&Number(t[field])>=b[0]&&Number(t[field])<b[1]}).length});max=Math.max.apply(null,[1].concat(counts));return bins.map(function(b,i){return'<div class="item"><div class="between"><span>'+b[2]+'</span><b>'+counts[i]+'</b></div><div class="bar"><i style="width:'+(counts[i]/max*100)+'%"></i></div></div>'}).join("")}
 function renderStats(){var s=txRange().filter(function(t){return t.type==="income"}),g=s.filter(function(t){return Number(t.gram)>0}),tg=g.reduce(function(x,t){return x+Number(t.gram)},0);$("sGramCount").textContent=g.length;$("sNoGram").textContent=s.length-g.length;$("sAvgGram").textContent=g.length?(tg/g.length).toFixed(2)+" g":"—";$("sAvgAmount").textContent=money(s.length?s.reduce(function(x,t){return x+Number(t.amount)},0)/s.length:0);
@@ -310,6 +313,9 @@ function periodUnitTotals(list){
 function renderReport(){
   var a=reportTx(),m=metric(a),r=reportRange();
   $("repSales").textContent=money(m.sales);$("repProfit").textContent=money(m.profit)+(m.sales?" (%"+(m.profit/m.sales*100).toFixed(1)+")":"");renderCategoryBreakdown();
+  var gTx=a.filter(function(t){return t.type==="income"&&Number(t.gram)>0});
+  $("repGram").textContent=gTx.length?m.gram.toFixed(2)+" g":"—";
+  $("repAvgGram").textContent=gTx.length?(m.gram/gTx.length).toFixed(2)+" g":"—";
   $("profitPerGram").textContent=m.gram?money(m.profit/m.gram)+" / g":"—";
   renderVolumeTrend();
   $("avg12").textContent=money(monthlyAverage(12));$("avg24").textContent=money(monthlyAverage(24));

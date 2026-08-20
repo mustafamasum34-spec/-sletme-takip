@@ -275,25 +275,27 @@ function svgBars(items){return svgChart(items,items.length>6?160:130)}
 function sparkBars(items){return svgChart(items,160)}
 function weekdayValues(){
   var names=["Pazar","Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi"],short=["Paz","Pzt","Sal","Çar","Per","Cum","Cmt"],o=[],td=new Date().getDay();
-  for(var i=0;i<7;i++){var a=db.transactions.filter(function(t){return dateOnly(t.date).getDay()===i}),m=metric(a);o.push({label:names[i],short:short[i],value:m.sales,count:m.count,highlight:i===td});}
+  for(var i=0;i<7;i++){var a=db.transactions.filter(function(t){return dateOnly(t.date).getDay()===i}),m=metric(a),days={};a.forEach(function(t){days[t.date]=true});o.push({label:names[i],short:short[i],value:m.sales,count:m.count,dayCount:Object.keys(days).length,highlight:i===td});}
   return o;
 }
 function weekdayStats(){return weekdayValues().slice().sort(function(a,b){return b.value-a.value})}
 function monthdayStats(){
   var o=[];
   for(var day=1;day<=31;day++){
-    var a=db.transactions.filter(function(t){return dateOnly(t.date).getDate()===day}),m=metric(a);
-    if(m.count)o.push({label:day+". gün",value:m.sales,count:m.count});
+    var a=db.transactions.filter(function(t){return dateOnly(t.date).getDate()===day}),m=metric(a),days={};
+    a.forEach(function(t){days[t.date]=true});
+    if(m.count)o.push({label:day+". gün",value:m.sales,count:m.count,dayCount:Object.keys(days).length});
   }
   return o.sort(function(a,b){return b.value-a.value});
 }
 function rankHtml(arr){
   if(!arr.length)return '<div class="empty">Henüz yeterli veri yok.</div>';
   var top=arr.slice(0,3),bot=arr.slice(-3).reverse();
+  function row(x,cls,arrow){return '<div class="rankItem"><span class="'+cls+'">'+arrow+' '+esc(x.label)+' <span class="muted">('+x.dayCount+' gün)</span></span><b>'+money(x.value)+'</b></div>'}
   return '<div class="muted" style="margin-bottom:4px">En iyi</div>'+
-    top.map(function(x){return '<div class="rankItem"><span class="good">▲ '+esc(x.label)+'</span><b>'+money(x.value)+'</b></div>'}).join("")+
+    top.map(function(x){return row(x,"good","▲")}).join("")+
     '<div class="muted" style="margin:10px 0 4px">En kötü</div>'+
-    bot.map(function(x){return '<div class="rankItem"><span class="bad">▼ '+esc(x.label)+'</span><b>'+money(x.value)+'</b></div>'}).join("");
+    bot.map(function(x){return row(x,"bad","▼")}).join("");
 }
 function yearStats(){
   var map={},cy=String(new Date().getFullYear());
